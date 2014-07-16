@@ -1,29 +1,17 @@
 # SpaceObservatory
 
-TODO: Write a gem description
+This is an easy add-on for you to observe your ObjectSpace.
+
+## Main Features
+
+- Pure ruby.  NO C extensions.
+- Drop-in design that requires NO modifications to your program.
+- Minimal overhead.  Does all jobs except data collection in a separate process.
 
 ## Installation
 
-Add this line to your application's Gemfile:
-
-    gem 'space_observatory'
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install space_observatory
+As usual.
 
 ## Usage
 
-TODO: Write usage instructions here
-
-## Contributing
-
-1. Fork it ( https://github.com/[my-github-username]/space_observatory/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+TBD
