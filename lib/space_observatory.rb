@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-require "space_observatory/version"
+require_relative "space_observatory/version"
 
 module SpaceObservatory
   # Your code goes here...

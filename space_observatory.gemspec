@@ -35,7 +35,7 @@ Gem::Specification.new do |gem|
   gem.license       = "MIT"
 
   gem.files         = `git ls-files -z`.split("\x0")
-  gem.executables   = gem.files.grep(%r{^bin/}) { |f| File.basename(f) }
+  gem.executables   = gem.files.grep(%r{^exec/}) { |f| File.basename(f) }
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.require_paths = ["lib"]
 
@@ -48,4 +48,6 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'bundler',   '~> 1.6'
   gem.add_development_dependency 'rake'
   gem.add_development_dependency 'pry'
+  gem.add_dependency 'rack' # we use pure-rack
+  gem.add_dependency 'slop'
 end
