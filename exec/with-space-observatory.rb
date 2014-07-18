@@ -43,15 +43,15 @@ if __FILE__ == $0
   require 'rubygems'
   require 'space_observatory/base_station'
 
-  fd, pid, argw = SpaceObservatory::BaseStation.rackup! ARGV
+  tx, rx, pid, argw = SpaceObservatory::BaseStation.rackup! ARGV
 
   # Wait for spawned process to parse ARGV...
 
-  case line = fd.gets
+  case line = rx.gets
   when "space_observatory ok\n" then
     # Normal.  Propel second stage.
     path = File.expand_path __FILE__
-    argh = { 7 => fd } # FDs <= 6 happen to be reserved somehow in ruby.
+    argh = { 7 => tx, 8 => rx } # FDs <= 6 happen to be reserved somehow in ruby.
     arge = {
       'RUBYOPT'  => (ENV['RUBYOPT'] || '') + " -r #{path}",
       'BASE_PID' => pid.to_s,
@@ -61,13 +61,13 @@ if __FILE__ == $0
 
   when "space_observatory norun\n" then
     # No need to run, or no runnable projectile specified
-    STDOUT.write fd.read # dump if any
+    STDOUT.write rx.read # dump if any
     Process.exit true
 
   else
     # Something went wrong
     STDOUT.puts line
-    STDOUT.puts fd.read # dump if any
+    STDOUT.write rx.read # dump if any
     Process.exit false
   end
 
@@ -77,20 +77,25 @@ else
   # but `objspace.so`.
 
   begin
-    # File descriptor number 7 should have been passed (see 1st stage).
-    ctrl = IO.for_fd 7, 'r+b:binary:binary'
-    th   = Thread.start ctrl do |io|
+    # File descriptor number 7 and 8 should have been passed (see 1st stage).
+    tx = IO.for_fd 7, 'wb:binary:binary'
+    rx = IO.for_fd 8, 'rb:binary:binary'
+    th = Thread.start do
       begin
-        ctrl.puts 'hello' # notify end of execve(2)
+        tx.puts 'hello' # handshake
+        tx.flush
         loop do
-          # This is the key part of this entire lib.
-          case io.gets
+          case rx.gets
           when "space_observatory setup\n" then
             require 'objspace'
           when "space_observatory probe\n" then
-            io.puts 'start'
-            ObjectSpace.dump_all output: io
-            io.puts 'end'
+            # This is the key part of this entire lib.
+            Thread.exclusive do
+              tx.puts 'start'
+              ObjectSpace.dump_all output: tx
+              tx.puts 'end'
+              tx.flush
+            end
           when "space_observatory teardown\n", NilClass then
             Thread.exit
           end
@@ -100,10 +105,14 @@ else
       end
     end
     at_exit do
-      ctrl.puts 'fin'
-      ctrl.close_write
-      Process.waitpid ENV['BASE_PID'].to_i if ENV['BASE_PID']
+      Thread.exclusive do
+        tx.puts 'fin'
+        tx.flush
+      end
       th.join
+      tx.close_write
+      rx.close_read
+      Process.waitpid ENV['BASE_PID'].to_i if ENV['BASE_PID']
     end
   rescue Errno::EBADF, Errno::EINVAL
     # Maybe a grand-child process.  Just leave nothing.

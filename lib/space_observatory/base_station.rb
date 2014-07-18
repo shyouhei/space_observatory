@@ -21,7 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-require 'socket'
+require 'rubygems'
+require 'open3'
 require 'rack'
 require 'slop'
 require_relative '../space_observatory'
@@ -29,22 +30,19 @@ require_relative '../space_observatory'
 class SpaceObservatory::BaseStation
   # Fork a base station process
   # @param  [Array]  argv     The ::ARGV
-  # @return [Socket, Integer, Array]  child's socket, pid, and argv.
+  # @return [IO, IO, Integer, Array]  child's socket, pid, and argv.
   def self.rackup! argv
-    # FIXME: should falllback to AF_INET for non-unix
-    parent, child = Socket.pair :UNIX, :STREAM # SOCK_STREAM intentional.
-    slop, argw    = parse ARGV
-    path          = File.expand_path __FILE__
-    cmdline       = %W"-r #{path} -e SpaceObservatory::BaseStation.new(7).rackup"
-    packed        = Marshal.dump argv
-    pid           = Process.spawn ['ruby', 'ruby'], *cmdline, {
-      0             => :close,
-      7             => child,
-      :close_others => true,
-    }
-    parent.puts packed.length
-    parent.write packed
-    return parent, pid, argw
+    _, a    = parse argv
+    path    = File.expand_path __FILE__
+    cmdline = %W"-r #{path} -e SpaceObservatory::BaseStation.construct --"
+    i, o, t = Open3.popen2 %w'ruby ruby', *cmdline, *argv
+    return i, o, t.pid, a
+  end
+
+  # Child process entry point
+  def self.construct
+    obj = new ARGV, STDIN, STDOUT
+    obj.rackup
   end
 
   # Parse command line
@@ -58,31 +56,34 @@ class SpaceObservatory::BaseStation
     return opts, argw
   end
 
-  # @param [Integer] fileno where to read
-  def initialize fileno
-    @socket      = IO.for_fd fileno, 'r+b:binary:binary'
-    length       = @socket.gets.to_i
-    argstr       = @socket.read length
-    @argv        = Marshal.load argstr
-    @opts, @argw = self.class.parse @argv
+  # @param [Array] argv   the ::ARGV
+  # @param [IO]    stdin  the ::STDIN
+  # @param [IO]    stdout the ::STDOUT
+  def initialize argv, stdin, stdout
+    @argv        = argv
+    @stdin       = stdin
+    @stdout      = stdout
+    @stdout.sync = true # we need line IO
+    @opts, @argw = self.class.parse argv
     @argw.shift if @argw.first == '--'
   end
 
   def rackup
     if norun?
-      @socket.puts "space_observatory norun"
-      @socket.puts @opts.help if @opts['h']
-      @socket.flush
-      @socket.close_write
+      @stdout.puts "space_observatory norun"
+      @stdout.puts @opts.help if @opts['h']
+      @stdout.flush
+      @stdout.close_write
     else
-      @socket.puts "space_observatory ok"
-      @socket.flush
-      @socket.gets # wait execve(2)
-      @socket.puts "space_observatory setup"
-      @socket.puts "space_observatory probe"
-      while line = @socket.gets
+      # needs handshale
+      @stdout.puts "space_observatory ok"
+      @stdin.gets # wait execve(2)
+      @stdout.puts "space_observatory setup"
+      @stdout.puts "space_observatory probe"
+      while line = @stdin.gets
         case line
-        when 'fin'
+        when "fin\n"
+          @stdout.close
           return
         when /^start/
         when /^end/
