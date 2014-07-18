@@ -58,6 +58,8 @@ class SpaceObservatory::BaseStation
     argw = argv.dup
     opts = Slop.parse! argw do
       on 'h', 'help', 'this message'
+      on 'port=', 'JSONRPC port', as: Integer
+      on 'ttl=', 'cache expiration (in seconds)', as: Float
     end
     return opts, argw
   end
@@ -76,10 +78,11 @@ class SpaceObservatory::BaseStation
     @finished    = Time.at 0
     @jsons       = Array.new
     @rwlock      = Sync.new
+    @expires     = @opts['ttl'] || 60 # 300 # 3600
   end
 
   def rackup
-    Rack::Handler::WEBrick.run self
+    Rack::Handler::WEBrick.run self, Port: @opts['port']
   end
 
   def banner
@@ -127,6 +130,14 @@ class SpaceObservatory::BaseStation
   def call env
     # TODO: more "proper" JSON
     enum = Enumerator.new do |y|
+      @rwlock.synchronize Sync::EX do
+        if Time.now - @started >= @expires
+          @stdout.puts "space_observatory probe"
+          IO.select [@stdin], [], [], 10
+          @started = Time.now # prevent further probe
+        end
+      end
+      Thread.pass
       @rwlock.synchronize Sync::SH do
         id = @finished.to_i
         y.yield <<-"]"
