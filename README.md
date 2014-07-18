@@ -14,4 +14,15 @@ As usual.
 
 ## Usage
 
-TBD
+```bash
+bundle exec with-space-observatory.rb --port=1234 -- ruby bin/rails server --port=5678
+```
+
+This command starts two HTTP servers on ports 1234 and 5678 each.  1234 (for this case) is for probing object space of rails server which listens port 5678.
+
+`with-space-observatory.rb --help` might expose more option(s).
+
+## TODOs
+
+- Probing is slow.  Should cache.
+- JSON is valid, but not that pretty.
