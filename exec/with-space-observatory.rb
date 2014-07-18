@@ -87,7 +87,7 @@ else
     rx = IO.for_fd 8, 'rb:binary:binary'
     th = Thread.start do
       begin
-        tx.puts 'hello' # handshake
+        tx.puts 'space_observatory hello' # handshake
         tx.flush
         loop do
           case rx.gets
@@ -96,9 +96,9 @@ else
           when "space_observatory probe\n" then
             # This is the key part of this entire lib.
             Thread.exclusive do
-              tx.puts 'start'
+              tx.puts 'space_observatory begin_objspace'
               ObjectSpace.dump_all output: tx
-              tx.puts 'end'
+              tx.puts 'space_observatory end_objspace'
               tx.flush
             end
           when "space_observatory teardown\n", NilClass then
@@ -111,7 +111,7 @@ else
     end
     at_exit do
       Thread.exclusive do
-        tx.puts 'fin'
+        tx.puts 'space_observatory projectile_eof'
         tx.flush
       end
       th.join

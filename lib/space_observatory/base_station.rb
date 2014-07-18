@@ -82,13 +82,20 @@ class SpaceObservatory::BaseStation
       @stdout.puts "space_observatory probe"
       while line = @stdin.gets
         case line
-        when "fin\n"
+        when "space_observatory projectile_eof\n"
           @stdout.close
           return
-        when /^start/
-        when /^end/
+        when "space_observatory begin_objspace\n"
+          @started = Time.now
+          @jsons   = Array.new
+        when "space_observatory end_objspace\n"
+          @finished = Time.now
+          STDERR.printf "took %fsec\n", (@finished - @started).to_f
+        when /\A{/o
+          # This is the output of ObjectSpace.dump_all
+          @jsons.push line
         else
-		raise 'TBW'
+		raise "TBW: #{line}"
         end
       end
     end
