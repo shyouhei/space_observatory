@@ -23,6 +23,7 @@
 
 require 'rubygems'
 require 'open3'
+require 'sync'
 require 'rack'
 require 'slop'
 require_relative '../space_observatory'
@@ -71,6 +72,10 @@ class SpaceObservatory::BaseStation
     @stdout.sync = true # we need line IO
     @opts, @argw = self.class.parse argv
     @argw.shift if @argw.first == '--'
+    @started     = Time.at 0
+    @finished    = Time.at 0
+    @jsons       = Array.new
+    @rwlock      = Sync.new
   end
 
   def rackup
@@ -99,8 +104,10 @@ class SpaceObservatory::BaseStation
           return
         when "space_observatory begin_objspace\n"
           @started = Time.now
+          @rwlock.lock Sync::EX
           @jsons   = Array.new
         when "space_observatory end_objspace\n"
+          @rwlock.unlock Sync::EX
           @finished = Time.now
           STDERR.printf "took %fsec\n", (@finished - @started).to_f
         when /\A{/o
@@ -115,5 +122,31 @@ class SpaceObservatory::BaseStation
 
   def need_rackup?
     not @opts['h'] and not @argw.empty?
+  end
+
+  def call env
+    # TODO: more "proper" JSON
+    enum = Enumerator.new do |y|
+      @rwlock.synchronize Sync::SH do
+        id = @finished.to_i
+        y.yield <<-"]"
+          {
+            "jsonrpc" : "2.0",
+            "id" : #{id},
+            "result" : [
+        ]
+        @jsons.each_with_index do |i, j|
+          y.yield "," unless j.zero?
+          y.yield i
+        end
+        y.yield "]\n}\n"
+      end
+    end
+
+    return [
+      200,
+      { 'Content-Type' => 'application/json' },
+      enum
+    ]
   end
 end
