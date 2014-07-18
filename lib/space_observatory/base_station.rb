@@ -42,7 +42,12 @@ class SpaceObservatory::BaseStation
   # Child process entry point
   def self.construct
     obj = new ARGV, STDIN, STDOUT
-    obj.rackup
+    if obj.need_rackup?
+      obj.start_collector
+      obj.rackup
+    else
+      obj.banner
+    end
   end
 
   # Parse command line
@@ -69,12 +74,18 @@ class SpaceObservatory::BaseStation
   end
 
   def rackup
-    if norun?
-      @stdout.puts "space_observatory norun"
-      @stdout.puts @opts.help if @opts['h']
-      @stdout.flush
-      @stdout.close_write
-    else
+    Rack::Handler::WEBrick.run self
+  end
+
+  def banner
+    @stdout.puts "space_observatory norun"
+    @stdout.puts @opts.help if @opts['h']
+    @stdout.flush
+    @stdout.close_write
+  end
+
+  def start_collector
+    Thread.start do
       # needs handshale
       @stdout.puts "space_observatory ok"
       @stdin.gets # wait execve(2)
@@ -83,6 +94,7 @@ class SpaceObservatory::BaseStation
       while line = @stdin.gets
         case line
         when "space_observatory projectile_eof\n"
+          Rack::Handler::WEBrick.shutdown rescue nil
           @stdout.close
           return
         when "space_observatory begin_objspace\n"
@@ -101,8 +113,7 @@ class SpaceObservatory::BaseStation
     end
   end
 
-  private
-  def norun?
-    @opts['h'] or @argw.empty?
+  def need_rackup?
+    not @opts['h'] and not @argw.empty?
   end
 end

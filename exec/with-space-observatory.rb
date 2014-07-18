@@ -53,7 +53,7 @@ if __FILE__ == $0
   when "space_observatory ok\n" then
     # Normal.  Propel second stage.
     path = File.expand_path __FILE__
-    argh = { 7 => tx, 8 => rx } # FDs <= 6 happen to be reserved somehow in ruby.
+    argh = { 7 => tx, 8 => rx } # FDs < 7 happen to be reserved somehow in ruby
     arge = {
       'RUBYOPT'  => (ENV['RUBYOPT'] || '') + " -r #{path}",
       'BASE_PID' => pid.to_s,
