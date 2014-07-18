@@ -26,13 +26,15 @@
 # because that should affect its probing result.
 #
 #     The cause of  this evilness is that we cannot  assume our helper routines
-#     are on  the load path.   So the  only safe way  is to require  this exact
-#     file.
+#     are on the  load path.  So the  only safe assumption is  the existance of
+#     this  exact file.   Thank goodness  we can  know the  path of  ourself by
+#     querying  __FILE__.    Requiring  this  should  solve   this  wire-puzzle
+#     situation.
 
 if __FILE__ == $0
   # This case we are  executed as a script (first stage).   Our mission here is
   # to spawn  a process  that acts  as JSONRPC server,  then exec  the original
-  # projectile, with injecting  a file descriptor that connects  to the spawned
+  # projectile, with injecting two file descriptors that connect to the spawned
   # server.
 
   # SIGINT shall interrupt us properly.
@@ -75,6 +77,9 @@ else
   # We  are `require`d  here  (second  stage).  This  case  we  SNEAK INTO  the
   # projectile.  So to minimize the impact  of our presence, we require nothing
   # but `objspace.so`.
+  #
+  # This part is  a hand-crafted state-of-art sh*t that I  believe is unable to
+  # unit-test.  Just feel it.  It works.  For me.
 
   begin
     # File descriptor number 7 and 8 should have been passed (see 1st stage).
