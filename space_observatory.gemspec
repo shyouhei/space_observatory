@@ -34,6 +34,7 @@ Gem::Specification.new do |gem|
   gem.homepage      = "https://github.com/shyouhei/space_observatory"
   gem.license       = "MIT"
 
+  gem.bindir        = "exec"
   gem.files         = `git ls-files -z`.split("\x0")
   gem.executables   = gem.files.grep(%r{^exec/}) { |f| File.basename(f) }
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
