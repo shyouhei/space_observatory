@@ -22,13 +22,13 @@
 # SOFTWARE.
 
 require 'rubygems'
-require 'open3'
-require 'sync'
+require 'bundler/setup'
 require 'rack'
 require 'slop'
 require_relative '../space_observatory'
+require_relative 'rack_middleware'
 
-class SpaceObservatory::BaseStation
+class SpaceObservatory::BaseStation < SpaceObservatory::RackMiddleware
   # Fork a base station process
   # @param  [Array]  argv     The ::ARGV
   # @return [IO, IO, Integer, Array]  child's socket, pid, and argv.
@@ -44,7 +44,6 @@ class SpaceObservatory::BaseStation
   def self.construct
     obj = new ARGV, STDIN, STDOUT
     if obj.need_rackup?
-      obj.start_collector
       obj.rackup
     else
       obj.banner
@@ -74,15 +73,16 @@ class SpaceObservatory::BaseStation
     @stdout.sync = true # we need line IO
     @opts, @argw = self.class.parse argv
     @argw.shift if @argw.first == '--'
-    @started     = Time.at 0
-    @finished    = Time.at 0
-    @jsons       = Array.new
-    @rwlock      = Sync.new
-    @expires     = @opts['ttl'] || 60 # 300 # 3600
+
+    super nil, '/', @opts['ttl'] || 60 # 300 # 3600
   end
 
   def rackup
     Rack::Handler::WEBrick.run self, Port: @opts['port']
+  end
+
+  def need_rackup?
+    not @opts['h'] and not @argw.empty?
   end
 
   def banner
@@ -92,13 +92,28 @@ class SpaceObservatory::BaseStation
     @stdout.close_write
   end
 
+  private
+
   def start_collector
+    retun unless need_rackup?
+
+    Thread.start do
+      loop do
+        env = @queue.deq # block here
+        @mutex.synchronize do
+          next if Time.now - @started < @expires
+          @stdout.puts "space_observatory probe"
+        end
+      end
+    end
+
     Thread.start do
       # needs handshale
       @stdout.puts "space_observatory ok"
       @stdin.gets # wait execve(2)
       @stdout.puts "space_observatory setup"
-      @stdout.puts "space_observatory probe"
+
+      tmp = Tempfile.new ''
       while line = @stdin.gets
         case line
         when "space_observatory projectile_eof\n"
@@ -107,57 +122,20 @@ class SpaceObservatory::BaseStation
           return
         when "space_observatory begin_objspace\n"
           @started = Time.now
-          @rwlock.lock Sync::EX
-          @jsons   = Array.new
+          @mutex.lock
+          tmp.truncate 0
         when "space_observatory end_objspace\n"
-          @rwlock.unlock Sync::EX
+          cook tmp
+          @mutex.unlock
           @finished = Time.now
           STDERR.printf "took %fsec\n", (@finished - @started).to_f
         when /\A{/o
           # This is the output of ObjectSpace.dump_all
-          @jsons.push line
+          tmp.write line
         else
 		raise "TBW: #{line}"
         end
       end
     end
-  end
-
-  def need_rackup?
-    not @opts['h'] and not @argw.empty?
-  end
-
-  def call env
-    # TODO: more "proper" JSON
-    enum = Enumerator.new do |y|
-      @rwlock.synchronize Sync::EX do
-        if Time.now - @started >= @expires
-          @stdout.puts "space_observatory probe"
-          IO.select [@stdin], [], [], 10
-          @started = Time.now # prevent further probe
-        end
-      end
-      Thread.pass
-      @rwlock.synchronize Sync::SH do
-        id = @finished.to_i
-        y.yield <<-"]"
-          {
-            "jsonrpc" : "2.0",
-            "id" : #{id},
-            "result" : [
-        ]
-        @jsons.each_with_index do |i, j|
-          y.yield "," unless j.zero?
-          y.yield i
-        end
-        y.yield "]\n}\n"
-      end
-    end
-
-    return [
-      200,
-      { 'Content-Type' => 'application/json' },
-      enum
-    ]
   end
 end

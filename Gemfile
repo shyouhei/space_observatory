@@ -23,5 +23,6 @@
 
 source 'https://rubygems.org'
 
+gem 'rack', git: 'git@github.com:rack/rack.git'
 # Specify your gem's dependencies in space_observatory.gemspec
 gemspec

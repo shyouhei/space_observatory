@@ -21,8 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-require_relative "space_observatory/version"
+require 'rubygems'
+require_relative 'rack_middleware'
 
-module SpaceObservatory
-  require_relative 'space_observatory/railtie' if defined? ::Rails
+class SpaceObservatory::Railtie < ::Rails::Railtie
+  initializer "space_observatory.install_middleware" do |app|
+    app.config.middleware.insert_before "ActionDispatch::Static", "SpaceObservatory::RackMiddleware"
+  end
 end

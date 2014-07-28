@@ -7,12 +7,35 @@ This is an easy add-on for you to observe your ObjectSpace.
 - Pure ruby.  NO C extensions.
 - Drop-in design that requires NO modifications to your program.
 - Minimal overhead.  Does all jobs except data collection in a separate process.
+- Native support Rails, Sinatra, and non-Web daemons.
 
 ## Installation
 
 As usual.
 
 ## Usage
+
+### on Rails
+
+```ruby
+gem 'space_observatory', require: 'space_observatory/railtie'
+```
+
+And you are done.
+
+### Pure Rack / Sinatra / Padrino etc
+
+```ruby
+gem 'space_observatory', require: 'space_observatory/rack_middleware'
+```
+
+Also in your `config.ru` file add:
+
+```ruby
+use SpaceObservatory::RackMiddleware
+```
+
+### Versatile use case including non-Web daemons
 
 ```bash
 bundle exec with-space-observatory.rb --port=1234 -- ruby bin/rails server --port=5678
