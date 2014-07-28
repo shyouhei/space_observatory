@@ -13,6 +13,8 @@ This is an easy add-on for you to observe your ObjectSpace.
 
 As usual.
 
+**NOTE** however that as of this writing, WEBrick do not support websockets (necessary for this lib).  You need a websockets-aware rack handler like Puma, Passanger, whatever.
+
 ## Usage
 
 ### on Rails
