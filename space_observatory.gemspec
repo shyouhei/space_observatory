@@ -41,12 +41,12 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
 
   gem.required_ruby_version = '~> 2.1'
-  gem.add_development_dependency 'yard',      '~> 0.8'
-  gem.add_development_dependency 'rdoc',      '~> 4.0'
-  gem.add_development_dependency 'rspec',     '~> 3.0'
+  gem.add_development_dependency 'yard'
+  gem.add_development_dependency 'rdoc'
+  gem.add_development_dependency 'rspec'
   gem.add_development_dependency 'rspec-its'
-  gem.add_development_dependency 'simplecov', '>= 0'
-  gem.add_development_dependency 'bundler',   '~> 1.6'
+  gem.add_development_dependency 'simplecov'
+  gem.add_development_dependency 'bundler'
   gem.add_development_dependency 'rake'
   gem.add_development_dependency 'pry'
   gem.add_dependency 'rack' # we use pure-rack
